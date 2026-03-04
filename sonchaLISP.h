@@ -1,3 +1,4 @@
+#pragma once
 struct _atom;
 struct _element;
 struct _list;

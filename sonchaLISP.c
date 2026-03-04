@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sonchaLISP.h"
+#include "sonchaSTD.h"
 #define MX_EXP 5000
 
 atom* newNumAtom(char* intArr){
@@ -39,37 +40,47 @@ element* newListElement(list* newList){
 	return newElement;
 }
 
-list* parse(char* exp){
-	int len = strnlen(exp, MX_EXP);
-	char* expCopy;
-	expCopy = malloc(sizeof(char)*(len+1));
-	strcpy(expCopy, exp);
+list* parse(char* expStr){
+	int len = strnlen(expStr, MX_EXP);
+	char* expStrCopy;
+	expStrCopy = malloc(sizeof(char)*(len+1));
+	strcpy(expStrCopy, expStr);
 
-	if(expCopy[0]!='('){
+	if(expStrCopy[0]!='('){
 		printf("Parse Error! Expression does not begin with an opening parenthesis \'(\'\n");
 		return NULL;
 	}
-	if(expCopy[len-1]!=')'){
+
+	if(expStrCopy[len-1]=='\n'){
+		len--;
+	}
+	printf("lastCharacter: %c %d \n", expStrCopy[len-1], expStrCopy[len-1]);
+	if(expStrCopy[len-1]==')'){
+		len--;
+	}
+	else{
 		printf("Parse Error! Expression does not end with a closing parenthesis \')\'\n");
 		return NULL;
 	}
 
 
-	expCopy[len-1] = 0; //Done to remove the last ')' that ends the list 
+	expStrCopy[len] = 0; //Done to remove the last ')' that ends the list 
 
-	expCopy = expCopy+1; //Done to remove of the first '(' that starts the list
+	expStrCopy = expStrCopy+1; //Done to remove of the first '(' that starts the list
+	printf("expStrCopy: %s\n",expStrCopy);
 
 
 	list* resultList;
 	resultList = malloc(sizeof(list));
-	element* elementArr[500]; //TODO: Change this into a more memory efficient way. Probably a linked list?
+	element* elementArr[MX_EXP]; //TODO: Change this into a more memory efficient way. Probably a linked list?
 	int elementN=0;
 
 	int parenthesisDepth = 0;
 	char *parenthesisStr = calloc(sizeof(char), len+1);
-	char *token = strtok(expCopy, " ");
+	char *token = strtok(expStrCopy, " ");
 	while(token!=NULL){
 		int tokenLen = strlen(token);
+		printf("parenthesisDepth: %d    token: %s\n", parenthesisDepth, token);
 		if(token[0]=='('){
 			parenthesisDepth++;
 			strcat(parenthesisStr, token);
@@ -107,12 +118,11 @@ list* parse(char* exp){
 				strcat(parenthesisStr, " ");
 			}
 			else{
-
 				atom* newAtom;
-				if(token[0] >= '0' && token[0] <= '9'){ //If token is a number
+				if( (token[0] >= '0' && token[0] <= '9') || token[0]=='-'){ //If token is a number
 					//check if every letter of the token is a number
 					for(int i=0;i<tokenLen;i++){
-						if(token[i] < '0' || token[i] > '9'){
+						if((token[i] < '0' || token[i] > '9')&&token[i]=='-'){
 							printf("Parsing Error! Integer Tokens cannot have non-number characters!\n");
 							return NULL;
 						}
@@ -138,6 +148,12 @@ list* parse(char* exp){
 		}
 		token = strtok(NULL, " ");
 	}
+	if(token==NULL){
+		printf("token is NULL!\n");
+	}
+	else{
+		printf("token is \"%s\"\n", token);
+	}
 	if(parenthesisDepth>0){
 		printf("Parsing Error! Unclosed Parenthesis!\n");
 		return NULL;
@@ -151,16 +167,74 @@ list* parse(char* exp){
 	return resultList;
 }
 
+int evalSExpression(list exp, int *signal){
+	printf("Evaluating List :");
+	printList(exp);
+	printf("\n");
+	if(exp.size == 0){
+		return 0;
+	}
+	element operator = *(exp.elements[0]);
+	if(operator.type!=1){ //If the first operator of the s-expression is not an element 
+		if(operator.atomVal->type!=1){ //If the first operator of the s-expression is not a keyword
+			printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
+			*signal = -1;
+			return -1;
+		}
+	}
+	function evalFunction = findFunctionByName(operator.atomVal->opName);
+	if(evalFunction.type == -1){
+		printf("Eval Error! The first element of the S-Expression is not recognized! Keyword: %s\n",operator.atomVal->opName);
+		*signal = -2;
+		return -1;
+	}
+
+	int argN = exp.size-1;
+	element* argArr = malloc(sizeof(element)*(argN));
+	for(int i=0;i<argN;i++){
+		element elementVal = *(exp.elements[i+1]);
+		if(elementVal.type==0){ // If element is an atom
+			argArr[i] = elementVal;
+		}
+		else{ //If element is a list
+		      	int subExpVal = evalSExpression(*(elementVal.listVal), signal);
+			if(*signal!=0){ //If there was an error while evaluating sub S-Expressions
+				return -1;
+			}
+			argArr[i].type = 0;
+			argArr[i].atomVal = malloc(sizeof(atom));
+			argArr[i].atomVal->type = 0;
+			argArr[i].atomVal->value = subExpVal;
+			printf("subExpVal: %d\n", subExpVal);
+		}
+	}
+	int finalValue;
+	int evalSignal = 0;
+	int (*funcPointer)(element*, int, int*);
+	funcPointer = evalFunction.functionPointer;
+	finalValue = funcPointer(argArr, argN, &evalSignal);
+	if(evalSignal != 0){
+		printf("Eval Error! Error while running function %s!\n", evalFunction.name);
+		*signal = evalSignal;
+		return -1;
+	}
+	free(argArr);
+	return finalValue;
+}
+
 void printAtom(atom x){
+//	printf("atom type: %d\n",x.type);
 	if(x.type == 0){ // If atom x is an integer 
-		printf("%d", x.value);
+//		printf("x is an integer!\n");
+		printf("%d<I>", x.value);
 	}
 	else{ //If atom x is a keyword (variable or function) 
-	      printf("%s", x.opName);
+	      printf("%s<K>", x.opName);
 	}
 }
 
 void printElem(element x){
+//	printf("element type:%d\n",x.type);
 	if(x.type==0){ // If the element is an atom
 		printAtom(*(x.atomVal));
 	}
@@ -177,17 +251,27 @@ void printList(list listX){
 			printf(" ");
 		}
 	}
-	printf(")");
+	printf(")<L>");
 }
 
 int main(int argc, char* argv[]){
-	list* testList;
-	char testExp[] = "(add 1 (mult 3 4))";
-	printf("parsing test expression: %s\n", testExp);
-	testList = parse(testExp);
-	printf("Parsing Done! awefawe\n");
+	init();
+	list* userList;
+	char* userInput;
+	size_t userInputMX = MX_EXP;
+	size_t userInputLen;
+	userInput = malloc(sizeof(char) * userInputMX);
+	printf("Input LISP Expression: ");
+	userInputLen = getline(&userInput, &userInputMX, stdin);
+	printf("parsing test expression: %s\n", userInput);
+	userList = parse(userInput);
 	printf("Running Print List!\n");
-	printList(*testList);
+	printList(*userList);
 	printf("\n");
+	int signal=0;
+	int evalResult = evalSExpression(*userList, &signal);
+	printf("evalResult: %d    signal:%d\n",evalResult, signal);
+
+	//TODO: ACTUALLY FREE THE HEAP
 	return 0;
 }
