@@ -1,34 +1,9 @@
 #pragma once
-#include"sonchaLISP.h"
-#include<stdlib.h>
 #include<string.h>
-#define MX_FUNCTION_N 500
+#include"sonchaLISP.h"
+#include"sonchaFunctions.h"
 
-typedef struct _function{
-	int type; // 0 when it's a standard library function, 1 when it's a user defined function
-	char* name;
-	char* description;
-	list argList;
-	list evalValue;
-	int (*functionPointer)(element*, int, int*); //Only used for Standard Library Functions
-} function;
-
-function allFunctions[MX_FUNCTION_N]; //TODO: change this allFunctions static array into a linked list
-int allFunctionN;
-
-function findFunctionByName(char* name){
-	for(int i=0;i<allFunctionN;i++){
-		if(strcmp(allFunctions[i].name, name)==0){
-			return allFunctions[i];
-		}
-	}
-	//If function name is not found
-	function nullFunction;
-	nullFunction.type = -1;
-	return nullFunction;
-}
-
-void defineStdFunction(int (*functionPointer)(element*, int, int*), char* funcName, char* funcDescription){
+void defineStdFunction(element (*functionPointer)(element*, int, int*), char* funcName, char* funcDescription){
 	function newFunc;
 	newFunc.type = 0;
 	newFunc.name = malloc(sizeof(char)*(strlen(funcName)+1));
@@ -39,40 +14,47 @@ void defineStdFunction(int (*functionPointer)(element*, int, int*), char* funcNa
 	allFunctions[allFunctionN++] = newFunc;
 }
 
-int add(element *argList, int argN, int* signal){
+element add(element *argList, int argN, int* signal){
 	int result=0;
 	for(int i=0;i<argN;i++){
 		if(argList[i].type != 0){ //Only arguments of Atom types are accepted.
 			*signal = -1;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		atom argAtomVal = *(argList[i].atomVal);
 		if(argAtomVal.type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -2;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		int argIntVal = argAtomVal.value;
 		result += argIntVal;
 	}
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int sub(element *argList, int argN, int* signal){
+element sub(element *argList, int argN, int* signal){
 	int result=0;
 	if(argN<2){
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	for(int i=0;i<argN;i++){
 		if(argList[i].type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -1;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		atom argAtomVal = *(argList[i].atomVal);
 		if(argAtomVal.type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -2;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		int argIntVal = argAtomVal.value;
 
@@ -84,44 +66,53 @@ int sub(element *argList, int argN, int* signal){
 		}
 	}
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int mult(element *argList, int argN, int* signal){
+element mult(element *argList, int argN, int* signal){
 	int result=1;
 	for(int i=0;i<argN;i++){
 		if(argList[i].type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -1;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		atom argAtomVal = *(argList[i].atomVal);
+		int argIntVal = argAtomVal.value;
 		if(argAtomVal.type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -2;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
-		int argIntVal = argAtomVal.value;
 
 		result *= argIntVal;
 	}
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int divide(element *argList, int argN, int* signal){
+element divide(element *argList, int argN, int* signal){
 	int result=1;
 	if(argN<2){
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	for(int i=0;i<argN;i++){
 		if(argList[i].type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -1;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
   		atom argAtomVal = *(argList[i].atomVal);
 		if(argAtomVal.type != 0){ //Only arguments of Integer types are accepted.
 			*signal = -2;
-			return -1;
+			element resultElement = makeElementFromInt(-1);
+			return resultElement;
 		}
 		int argIntVal = argAtomVal.value;
 
@@ -133,104 +124,229 @@ int divide(element *argList, int argN, int* signal){
 		}
 	}
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int eq(element *argList, int argN, int* signal){
+element eq(element *argList, int argN, int* signal){
 	int result;
 	if(argN<2){
 		*signal = -3;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	if(argList[0].type != 0||argList[1].type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	atom argAtomVal0 = *(argList[0].atomVal);
 	atom argAtomVal1 = *(argList[1].atomVal);
 	if(argAtomVal0.type != 0||argAtomVal1.type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -2;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	int argIntVal0 = argAtomVal0.value;
 	int argIntVal1 = argAtomVal1.value;
 
 	result = (argIntVal0==argIntVal1)?1:0;
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int cond(element *argList, int argN, int* signal){
+element cond(element *argList, int argN, int* signal){
 	int result;
 	if(argN<3){
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	if(argList[0].type != 0|| argList[1].type != 0 ||argList[2].type != 0 ){ //Only arguments of Integer types are accepted.
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	atom argAtomVal0 = *(argList[0].atomVal);
 	atom argAtomVal1 = *(argList[1].atomVal);
 	atom argAtomVal2 = *(argList[2].atomVal);
 	if(argAtomVal0.type != 0|| argAtomVal1.type != 0||argAtomVal2.type != 0 ){ //Only arguments of Integer types are accepted.
 		*signal = -2;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	int argIntVal0 = argAtomVal0.value;
 	int argIntVal1 = argAtomVal1.value;
 	int argIntVal2 = argAtomVal2.value;
 	result = (argIntVal0==1)?argIntVal1:argIntVal2;
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int less(element *argList, int argN, int* signal){
+element less(element *argList, int argN, int* signal){
 	int result;
 	if(argN<2){
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	if(argList[0].type != 0 || argList[1].type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	atom argAtomVal0 = *(argList[0].atomVal);
 	atom argAtomVal1 = *(argList[1].atomVal);
 	if(argAtomVal0.type != 0 || argAtomVal1.type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -2;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	int argIntVal0 = argAtomVal0.value;
 	int argIntVal1 = argAtomVal1.value;
 
 	result = (argIntVal0<argIntVal1)?1:0;
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
 }
 
-int greater(element *argList, int argN, int* signal){
+element greater(element *argList, int argN, int* signal){
 	int result;
 	if(argN<2){
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	if(argList[0].type != 0 || argList[1].type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -1;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	atom argAtomVal0 = *(argList[0].atomVal);
 	atom argAtomVal1 = *(argList[1].atomVal);
 	if(argAtomVal0.type != 0 || argAtomVal1.type != 0){ //Only arguments of Integer types are accepted.
 		*signal = -2;
-		return -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
 	}
 	int argIntVal0 = argAtomVal0.value;
 	int argIntVal1 = argAtomVal1.value;
 
 	result = (argIntVal0>argIntVal1)?1:0;
 	*signal = 0;
-	return result;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
+}
+
+element len(element *argList, int argN, int* signal){
+	int result;
+	if(argN != 1){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element arg = argList[0];
+	printf("arg: ");
+	printElem(arg);
+	printf("\n");
+	if(arg.type !=  1){ // If the passed argument is not a list
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	
+	list *listVal = arg.listVal;
+	result = listVal->size;
+	*signal = 0;
+
+	element resultElement = makeElementFromInt(result);
+	return resultElement;
+}
+
+element first(element *argList, int argN, int* signal){
+	element resultElement;
+	if(argN != 1){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element arg = argList[0];
+	if(arg.type !=  1){ // If the passed argument is not a list
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	
+	list *listVal = arg.listVal;
+	
+	if(listVal->size==0){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	else{
+		resultElement = *(listVal->elements[0]);
+		printf("first Element: ");
+		printElem(resultElement);
+		printf("\n");
+	}
+
+	*signal = 0;
+
+	return resultElement;
+}
+
+element rest(element *argList, int argN, int* signal){
+	element resultElement;
+	if(argN != 1){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element arg = argList[0];
+	if(arg.type !=  1){ // If the passed argument is not a list
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	
+	list *listVal = arg.listVal;
+	
+	if(listVal->size==0){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	else{ // Delete the first element of the list
+	        list *restList = malloc(sizeof(list));
+		printf("listVal->size: %d\n", listVal->size);
+		restList->size = listVal->size-1;
+		restList->elements = malloc(sizeof(element*)*restList->size);
+		for(int i=0;i<restList->size;i++){
+			printf("i: %d\n", i);
+			restList->elements[i] = listVal->elements[i+1];
+		}
+		printf("rest element: ");
+		printList(*restList);
+		printf("\n");
+		*signal = 0;
+
+		element resultElement;
+		resultElement.type = 1;
+		resultElement.listVal = restList;
+		return resultElement;
+	}
 }
 
 void init(){
@@ -242,4 +358,7 @@ void init(){
 	defineStdFunction(cond, "cond", "Return the 2nd argument if argument 1 and argument 2 is the same value. Return 0 if not.");
 	defineStdFunction(less, "less", "Return 1 if argument 1 is less than argument 2");
 	defineStdFunction(greater, "greater", "Return 1 if argument 1 is greater than argument 2");
+	defineStdFunction(len, "len", "Return the length of argument 1 (list)");
+	defineStdFunction(first, "first", "Return the first element of a list");
+	defineStdFunction(rest, "rest", "Excluding the first element of a list, return the rest of the list");
 }
