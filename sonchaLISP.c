@@ -40,72 +40,8 @@ element* newListElement(list* newList){
 	return newElement;
 }
 
-void freeAtom(atom *atomToBeFreed){
-	// Does not check atom type because if there is data that is not used that is still allocated that should still be freed to prevent data leaks
-	if(atomToBeFreed->keyword!=NULL){
-		free(atomToBeFreed->keyword);
-	}
-	free(atomToBeFreed);
-}
 
-void freeElement(element *elementToBeFreed){
-	switch(elementToBeFreed->type){
-		case 0:
-			freeAtom(elementToBeFreed->atomVal);
-			break;
-		case 1:
-			if(elementToBeFreed->listVal != NULL){
-				freeList(elementToBeFreed->listVal);
-			}
-			break;
-	}
-	free(elementToBeFreed);
-}
-
-void freeList(list *listToBeFreed){
-	printf("freeList: ");
-	printList(*listToBeFreed);
-	printf("\n");
-	for(int i=0;i<listToBeFreed->size;i++){
-		freeElement(listToBeFreed->elements[i]);
-	}
-	free(listToBeFreed);
-}
-void printAtom(atom x){
-//	printf("atom type: %d\n",x.type);
-	if(x.type == 0){ // If atom x is an integer 
-//		printf("x is an integer!\n");
-		printf("%d<I>", x.value);
-	}
-	else{ //If atom x is a keyword (variable or function) 
-	      printf("%s<K>", x.keyword);
-	}
-}
-
-void printElem(element x){
-//	printf("element type:%d\n",x.type);
-	if(x.type==0){ // If the element is an atom
-		printAtom(*(x.atomVal));
-	}
-	else{ // If the element is a list
-		printList(*(x.listVal));
-	}
-}
-
-void printList(list listX){
-	if(listX.quoteMode==1){
-		printf("\'");
-	}
-	printf("(");
-	for(int i=0;i<listX.size;i++){
-		printElem(*(listX.elements[i]));
-		if(i<(listX.size-1)){
-			printf(" ");
-		}
-	}
-	printf(")<L>");
-}
-
+// TODO: Refactor Parser to go by each character and use stack (instead of going token by token)
 list* parse(char* expStr){
 	int len = strnlen(expStr, MX_EXP);
 	char* expStrCopy;
@@ -256,7 +192,7 @@ list* parse(char* expStr){
 	return resultList;
 }
 
-element evalSExpression(list exp, int *signal){
+element evalExpression(list exp, int *signal){
 	printf("Evaluating List :");
 	printList(exp);
 	printf("\n");
@@ -300,6 +236,7 @@ element evalSExpression(list exp, int *signal){
 		return makeElementFromInt(-1);
 	}
 
+
 	int argN = exp.size-1;
 	element* argArr = malloc(sizeof(element)*(argN));
 	for(int i=0;i<argN;i++){
@@ -308,7 +245,7 @@ element evalSExpression(list exp, int *signal){
 			argArr[i] = elementVal;
 		}
 		else{ //If element is a list
-		      	element subExpVal = evalSExpression(*(elementVal.listVal), signal);
+			element subExpVal = evalExpression(*(elementVal.listVal), signal);
 			printf("\n");
 			if(*signal!=0){ //If there was an error while evaluating sub S-Expressions
 				return makeElementFromInt(-1);
@@ -317,19 +254,45 @@ element evalSExpression(list exp, int *signal){
 			argArr[i] = subExpVal;
 		}
 	}
+
 	element finalValue;
 	int evalSignal = 0;
-	element (*funcPointer)(element*, int, int*);
-	funcPointer = evalFunction.functionPointer;
-	finalValue = funcPointer(argArr, argN, &evalSignal);
-	printf("eval value: ");
-	printElem(finalValue);
-	printf("\n");
-	if(evalSignal != 0){
-		printf("Eval Error! Error while running function %s!\n", evalFunction.name);
-		*signal = evalSignal;
-		return makeElementFromInt(-1);
+	if(evalFunction.type == 0){ // The operation is an STD function
+		element (*funcPointer)(element*, int, int*);
+		funcPointer = evalFunction.functionPointer;
+		finalValue = funcPointer(argArr, argN, &evalSignal);
+		printf("eval value: ");
+		printElem(finalValue);
+		printf("\n");
+		if(evalSignal != 0){
+			printf("Eval Error! Error while running function %s!\n", evalFunction.name);
+			*signal = evalSignal;
+			return makeElementFromInt(-1);
+		}
 	}
+	else{ // The operation is a user defined function
+		list evalFunctionList;
+		list argList;
+		list replacedFunctionList;
+
+		evalFunctionList = evalFunction.functionList;
+		argList = evalFunction.argList;
+
+		printf("\n");
+		printf("replaceArgs argList: ");
+		printList(argList);
+		printf("\n");
+
+
+		replacedFunctionList = replaceArgs(argList, evalFunctionList, argArr, argN);
+		finalValue = evalExpression(replacedFunctionList, &evalSignal);
+		if(evalSignal != 0){
+			printf("Eval Error! Error while running function %s!\n", evalFunction.name);
+			*signal = evalSignal;
+			return makeElementFromInt(-1);
+		}
+	}
+	
 	/*
 	 * for(int i=0;i<argN;i++){
 		if(argArr[i].type==0){ // If the ith argument is an atom
@@ -385,7 +348,7 @@ element evalCondExpression(list exp, int *signal){
 			*signal = -2;
 			return makeElementFromInt(-1);
 		}
-		condEvalResult = evalSExpression(*(condElem.listVal), signal);
+		condEvalResult = evalExpression(*(condElem.listVal), signal);
 	}
 
 	if(condEvalResult.type != 0){
@@ -417,7 +380,7 @@ element evalCondExpression(list exp, int *signal){
 				*signal = -5;
 				return makeElementFromInt(-1);
 			}
-			returnVal = evalSExpression(*(trueExp.listVal), signal);
+			returnVal = evalExpression(*(trueExp.listVal), signal);
 		}
 	}
 	else{ // If the conditional expression evaluates to false
@@ -430,7 +393,7 @@ element evalCondExpression(list exp, int *signal){
 				*signal = -6;
 				return makeElementFromInt(-1);
 			}
-			returnVal = evalSExpression(*(falseExp.listVal), signal);
+			returnVal = evalExpression(*(falseExp.listVal), signal);
 		}
 	}
 
@@ -457,7 +420,7 @@ int main(int argc, char* argv[]){
 		printList(*userList);
 		printf("\n");
 
-		element evalResult = evalSExpression(*userList, &signal);
+		element evalResult = evalExpression(*userList, &signal);
 		printf("final value: ");
 		printElem(evalResult);
 		printf("\n");

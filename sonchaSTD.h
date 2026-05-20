@@ -349,6 +349,80 @@ element rest(element *argList, int argN, int* signal){
 	}
 }
 
+element def(element *argList, int argN, int* signal){
+	if(argN != 3){
+		*signal = -1;
+		printf("Error while defining function! There must be only three arguments but %d were given!\n", argN);
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element nameArg;
+	element paramArg;
+	element functionListArg;
+
+	nameArg = argList[0];
+	if(nameArg.type != 0){ // If the first element of the def operation (function arguments) is not an atom
+		*signal = -2;
+		printf("Error while defining function! First argument of the def operation (function name) not an atom!\n");
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	if(nameArg.atomVal->type != 1){ // If the first element of the def operation (function arguments) is not a keyword
+		*signal = -3;
+		printf("Error while defining function! First argument of the def operation (function name) not a keyword!\n");
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	atom nameAtom;
+	char* functionName;
+	nameAtom = *(nameArg.atomVal);
+	int functionNameLen = strlen(nameAtom.keyword);
+	functionName = malloc(sizeof(char)*(functionNameLen+1));
+	strcpy(functionName, nameAtom.keyword);
+	functionName[functionNameLen] = 0;
+
+	paramArg = argList[1];
+	if(paramArg.type != 1){ // If the second element of the def operation (function arguments) is not an atom
+		*signal = -4;
+		printf("Error while defining function! Second argument of the def operation (function arguments) not a list!\n");
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	list funcArgList = *(paramArg.listVal);
+	printf("funcArgList: ");
+	printList(funcArgList);
+	printf("\n\n");
+
+	functionListArg = argList[2];
+	if(functionListArg.type != 1){ // If the third element of the def operation (function eval list) is not an atom
+		*signal = -5;
+		printf("Error while defining function! Third argument of the def operation (function eval list) not a list!\n");
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	list functionList = *(functionListArg.listVal);
+	printf("functionList: ");
+	printList(functionList);
+	printf("\n\n");
+
+	list* temp;
+	// Save New Function
+	function newFunction;
+	newFunction.type = 1;
+	newFunction.name = functionName;
+	temp = copyList(funcArgList);
+	newFunction.argList = *temp;
+	free(temp); // Only free(temp) and not freeList(temp) cause we have to access the elements in temp that are copied to newFunction.argList or newFunction.functionList
+	temp = copyList(functionList);
+	newFunction.functionList = *temp;
+	free(temp);
+	allFunctions[allFunctionN++] = newFunction;
+
+	element resultElement = makeElementFromInt(0);
+	return resultElement;
+}
+
 void init(){
 	defineStdFunction(add, "add", "Add multiple arguments");
 	defineStdFunction(sub, "sub","Subtract the 2nd argument and after from the 1st argument");
@@ -361,4 +435,5 @@ void init(){
 	defineStdFunction(len, "len", "Return the length of argument 1 (list)");
 	defineStdFunction(first, "first", "Return the first element of a list");
 	defineStdFunction(rest, "rest", "Excluding the first element of a list, return the rest of the list");
+	defineStdFunction(def, "def", "Define a new user-defined function");
 }
