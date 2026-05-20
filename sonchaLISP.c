@@ -10,16 +10,16 @@ atom* newNumAtom(char* intArr){
 	atom* newNumAtom = malloc(sizeof(atom));
 	newNumAtom->type = 0;
 	newNumAtom->value = val;
-	newNumAtom->opName = NULL;
+	newNumAtom->keyword = NULL;
 	return newNumAtom;
 }
 
-atom* newOpAtom(char* opArr){
-	int opNameLen = strlen(opArr);
+atom* newKeywordAtom(char* keywordArr){
+	int keywordLen = strlen(keywordArr);
 	atom* newOpAtom = malloc(sizeof(atom));
 	newOpAtom->type = 1;
-	newOpAtom->opName = malloc(sizeof(char)*(opNameLen+1));
-	strcpy(newOpAtom->opName, opArr);
+	newOpAtom->keyword = malloc(sizeof(char)*(keywordLen+1));
+	strcpy(newOpAtom->keyword, keywordArr);
 	newOpAtom->value = -1;
 	return newOpAtom;
 }
@@ -42,11 +42,8 @@ element* newListElement(list* newList){
 
 void freeAtom(atom *atomToBeFreed){
 	// Does not check atom type because if there is data that is not used that is still allocated that should still be freed to prevent data leaks
-	if(atomToBeFreed->opName!=NULL){
-		free(atomToBeFreed->opName);
-	}
-	if(atomToBeFreed->varName!=NULL){
-		free(atomToBeFreed->varName);
+	if(atomToBeFreed->keyword!=NULL){
+		free(atomToBeFreed->keyword);
 	}
 	free(atomToBeFreed);
 }
@@ -81,7 +78,7 @@ void printAtom(atom x){
 		printf("%d<I>", x.value);
 	}
 	else{ //If atom x is a keyword (variable or function) 
-	      printf("%s<K>", x.opName);
+	      printf("%s<K>", x.keyword);
 	}
 }
 
@@ -224,7 +221,7 @@ list* parse(char* expStr){
 							return NULL;
 						}
 					}
-					newAtom = newOpAtom(token);
+					newAtom = newKeywordAtom(token);
 				}
 				else{
 					printf("Parsing Error! Unrecognized Character!\n");
@@ -276,16 +273,29 @@ element evalSExpression(list exp, int *signal){
 	}
 
 	element operator = *(exp.elements[0]);
-	if(operator.type!=1){ //If the first operator of the s-expression is not an element 
-		if(operator.atomVal->type!=1){ //If the first operator of the s-expression is not a keyword
-			printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
-			*signal = -1;
-			return makeElementFromInt(-1);
-		}
+	printf("operator: ");
+	printElem(operator);
+	printf("\n");
+	printf("operator type: %d\n", operator.type);
+	printf("operator.atomVal->type: %d\n", operator.atomVal->type);
+	if(operator.type!=0){ //If the first operator of the s-expression is not an atom
+		printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
+		*signal = -1;
+		return makeElementFromInt(-1);
 	}
-	function evalFunction = findFunctionByName(operator.atomVal->opName);
+	if(operator.atomVal->type!=1){ //If the first operator of the s-expression is not a keyword
+		printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
+		*signal = -1;
+		return makeElementFromInt(-1);
+	}
+
+	if(strcmp(operator.atomVal->keyword, "cond")==0){ // When evaluating a conditional expression
+		return evalCondExpression(exp, signal);
+	}
+
+	function evalFunction = findFunctionByName(operator.atomVal->keyword);
 	if(evalFunction.type == -1){
-		printf("Eval Error! The first element of the S-Expression is not recognized! Keyword: %s\n",operator.atomVal->opName);
+		printf("Eval Error! The first element of the S-Expression is not recognized! Keyword: %s\n",operator.atomVal->keyword);
 		*signal = -2;
 		return makeElementFromInt(-1);
 	}
@@ -334,6 +344,98 @@ element evalSExpression(list exp, int *signal){
 	return finalValue;
 }
 
+element evalCondExpression(list exp, int *signal){
+	printf("Evaluating List :");
+	printList(exp);
+	printf("\n");
+	if(exp.size == 0){
+		return makeElementFromInt(0);
+	}
+
+	if(exp.quoteMode == 1){ // If quoteMode==1, don't evaluate the list
+		element result;
+		result.type = 1;
+		result.listVal = malloc(sizeof(exp));
+		*(result.listVal) = exp;
+		return result;
+	}
+
+	element operator = *(exp.elements[0]);
+
+	int argN = exp.size;
+
+	if(argN != 4){
+		printf("evalCondExpression: Eval Error! There needs to be four arguments (including \'cond\' keyword) for conditional expression but %d was/were given!\n", argN);
+		*signal = -2;
+		return makeElementFromInt(-1);
+	}
+
+	element condElem = *(exp.elements[1]);
+	element trueExp = *(exp.elements[2]);
+	element falseExp = *(exp.elements[3]);
+
+	element condEvalResult;
+
+	if(condElem.type == 0){ // condElem is an atom
+		condEvalResult = condElem;
+	}
+	else{ // condElem is a list
+		if(condElem.listVal == NULL){
+			printf("evalCondExpression: Eval Error! Conditional argument (second argument) listVal is NULL!\n"); 
+			*signal = -2;
+			return makeElementFromInt(-1);
+		}
+		condEvalResult = evalSExpression(*(condElem.listVal), signal);
+	}
+
+	if(condEvalResult.type != 0){
+		printf("evalCondExpression: Eval Error! Conditional Argument eval result is not an atom!\n");
+		printf("eval result: ");
+		printElem(condEvalResult);
+		*signal = -3;
+		return makeElementFromInt(-1);
+	}
+
+	atom condEvalAtomVal;
+	condEvalAtomVal = *(condEvalResult.atomVal);
+	if(condEvalAtomVal.type != 0){
+		printf("evalCondExpression: Eval Error! Conditional Argument result is not an integer!\n");
+		printf("eval result: ");
+		printAtom(condEvalAtomVal);
+		*signal = -4;
+		return makeElementFromInt(-1);
+	}
+
+	element returnVal;
+	if(condEvalAtomVal.value == 1){ // If the conditional expression evaluates to true
+		if(trueExp.type == 0){ // When the true expression is an atom
+			returnVal = trueExp;
+		}
+		else{ // When the true expression is a list to be evaluated
+		        if(trueExp.listVal == NULL){
+				printf("evalCondExpression: Eval Error! True Expression (third expression) NULL!\n");
+				*signal = -5;
+				return makeElementFromInt(-1);
+			}
+			returnVal = evalSExpression(*(trueExp.listVal), signal);
+		}
+	}
+	else{ // If the conditional expression evaluates to false
+		if(falseExp.type == 0){ // When the false expression is an atom
+			returnVal = falseExp;
+		}
+		else{ // When the false expression is a list to be evaluated
+			if(falseExp.listVal == NULL){
+				printf("evalCondExpression: Eval Error! False Expression (fourth expression) NULL!\n");
+				*signal = -6;
+				return makeElementFromInt(-1);
+			}
+			returnVal = evalSExpression(*(falseExp.listVal), signal);
+		}
+	}
+
+	return returnVal;
+}
 
 
 int main(int argc, char* argv[]){
