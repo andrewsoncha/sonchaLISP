@@ -3,8 +3,9 @@
 #include <string.h>
 #include "sonchaLISP.h"
 #include "sonchaSTD.h"
-#define LINE_MX 500
-#define MX_EXP 5000
+#define LINE_MX 5000
+#define MX_EXP 500000
+#define MX_ELEMS 5000
 
 atom* newNumAtom(char* intArr){
 	int val = atoi(intArr);
@@ -43,22 +44,24 @@ element* newListElement(list* newList){
 
 
 // TODO: Refactor Parser to go by each character and use stack (instead of going token by token)
-list* parse(char* expStr){
-	int len = strnlen(expStr, MX_EXP);
+list* parse(char* expStr, int expLen){
+	int len = expLen;
 	char* expStrCopy;
 	int quoteMode = 0;
 	if(len == 0){
 		return NULL;
 	}
+	// printf("expStr strlen: %d      expLen: %d\n", strlen(expStr), expLen);
 	expStrCopy = malloc(sizeof(char)*(len+1));
 	strcpy(expStrCopy, expStr);
+	// printf("expStrCopy: %s\n", expStrCopy);
 
 	if(expStrCopy[0]!='(' && !(expStrCopy[0]=='\'' && expStrCopy[1]=='(')){
 		printf("Parse Error! Expression does not begin with an opening parenthesis \"(\" or \"\'(\"\n");
 		return NULL;
 	}
 
-	if(expStrCopy[len-1]=='\n'){
+	if(expStrCopy[len-1]=='\n'||expStrCopy[len-1]==' '){
 		len--;
 	}
 
@@ -84,36 +87,41 @@ list* parse(char* expStr){
 
 	//printf("expStrCopy: %s\n",expStrCopy);
 
-	element* elementArr[MX_EXP]; //TODO: Change this into a more memory efficient way. Probably a linked list?
+	element* elementArr[MX_ELEMS]; //TODO: Change this into a more memory efficient way. Probably a linked list?
 	int elementN=0;
 
 	int parenthesisDepth = 0;
-	char* parenthesisStr = calloc(len+1, sizeof(char));
+	char* parenthesisStr = calloc(expLen+1, sizeof(char));
+	int parenthesisStrLen = 0;
 	char* strtokContext;
-	char* token = strtok_r(expStrCopy, " \n", &strtokContext);
+	char* token = strtok_r(expStrCopy, " \n\t", &strtokContext);
 
 	while(token!=NULL){
 		int tokenLen = strlen(token);
-		// printf("parenthesisDepth: %d    token: %s\n", parenthesisDepth, token);
+		//printf("parenthesisDepth: %d    token: %s\n", parenthesisDepth, token);
 		if(token[0]=='('|| (token[0]=='\''&&token[1]=='(')){
 			parenthesisDepth++;
 			strcat(parenthesisStr, token);
 			strcat(parenthesisStr, " ");
+			parenthesisStrLen += strlen(token)+1;
+			// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 			if(token[tokenLen-1]==')'){ //If it isn't a list with only a single element
 				parenthesisDepth--;
 				if(parenthesisDepth == 0){
+					// printf("Nested list, sending %s!\n", parenthesisStr);
 					/*
-					printf("Nested list, sending %s!\n", parenthesisStr);
 					printf("does this also cause an error?\n");
 					printf("parse(%s) %p\n", parenthesisStr, parenthesisStr);
 					*/
-					list *subList = parse(parenthesisStr);
+					list *subList = parse(parenthesisStr, parenthesisStrLen);
 					// printf("expStrCopy: %s\n", expStrCopy);
 					if(subList == NULL){ // Error while parsing subList
 						return NULL;
 					}
 					elementArr[elementN++] = newListElement(subList);
 					parenthesisStr[0] = 0; // Empty out parenthesisStr after parsing subExpression
+					parenthesisStrLen = 0;
+					// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 				}
 			}
 		}
@@ -125,28 +133,37 @@ list* parse(char* expStr){
 				}
 			}
 			strcat(parenthesisStr, token);
+			parenthesisStrLen += strlen(token);
+			// printf("token: %s\n", token);
+			// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 			if(parenthesisDepth == 0){
+				// printf("Nested List, sending %s %d!\n",parenthesisStr, parenthesisStrLen);
 				/*
-				printf("Nested List, sending %s!\n",parenthesisStr);
 				printf("does this also cause an error?\n");
 				printf("parse(%s) %p\n", parenthesisStr, parenthesisStr);
 				*/
-				list *subList = parse(parenthesisStr);
+				list *subList = parse(parenthesisStr, parenthesisStrLen);
 				// printf("expStrCopy: %s\n", expStrCopy);
 				if(subList == NULL){ // Error while parsing subList
 					return NULL;
 				}
 				elementArr[elementN++] = newListElement(subList);
 				parenthesisStr[0] = 0; // Empty out parenthesisStr after parsing subExpression
+				parenthesisStrLen = 0;
+				// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 			}
 			else{
 				strcat(parenthesisStr, " ");
+				parenthesisStrLen++;
+				// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 			}
 		}		
 		else{
 			if(parenthesisDepth>0){
 				strcat(parenthesisStr, token);
 				strcat(parenthesisStr, " ");
+				parenthesisStrLen += strlen(token)+1;
+				// printf("parenthesisStr: %s parenthesisStrLen: %d\n", parenthesisStr, parenthesisStrLen);
 			}
 			else{
 				atom* newAtom;
@@ -177,7 +194,7 @@ list* parse(char* expStr){
 				elementArr[elementN++] = newAtomElement(newAtom);
 			}
 		}
-		token = strtok_r(NULL, " \n", &strtokContext);
+		token = strtok_r(NULL, " \n\t", &strtokContext);
 	}
 	if(token==NULL){
 		// printf("token is NULL!\n");
@@ -263,7 +280,7 @@ element evalExpression(list exp, int *signal){
 			if(*signal!=0){ //If there was an error while evaluating sub S-Expressions
 				return makeElementFromInt(-1);
 			}
-			printElem(subExpVal);
+			// printElem(subExpVal);
 			argArr[i] = subExpVal;
 		}
 	}
@@ -274,11 +291,13 @@ element evalExpression(list exp, int *signal){
 		element (*funcPointer)(element*, int, int*);
 		funcPointer = evalFunction.functionPointer;
 		finalValue = funcPointer(argArr, argN, &evalSignal);
+		
 		/*
-		 * printf("eval value: ");
+		printf("eval value: ");
 		printElem(finalValue);
 		printf("\n");
 		*/
+		
 		if(evalSignal != 0){
 			printf("Eval Error! Error while running function %s!\n", evalFunction.name);
 			*signal = evalSignal;
@@ -429,7 +448,7 @@ int main(int argc, char* argv[]){
 	//char *lineBuffer;
 	size_t lineMX = MX_EXP;
 	size_t lineLen;
-	size_t userInputLen;
+	size_t userInputLen=0;
 	int signal=0;
 	int openParenthesisN = 0;
 
@@ -459,7 +478,7 @@ int main(int argc, char* argv[]){
 
 		if(openParenthesisN == 0){ // When end of multi-line expression
 			// printf("parsing test expression: %s\n", inputBuffer);
-			userList = parse(inputBuffer);
+			userList = parse(inputBuffer, userInputLen);
 			printf("Evaluating Expression!\n");
 			printList(*userList);
 			printf("\n");
@@ -473,6 +492,7 @@ int main(int argc, char* argv[]){
 			freeList(userList);
 
 			memset(inputBuffer, 0, MX_EXP);
+			userInputLen = 0;
 		}
 		else if(openParenthesisN < 0) { // If there are more closing parenthesis than opening ones
 			printf("There are more \')\' than there are \'(\'! \n");

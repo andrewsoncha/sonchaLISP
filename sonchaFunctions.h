@@ -29,6 +29,7 @@ function findFunctionByName(char* name){
 }
 
 list replaceArgs(list argList, list functionList, element* evalArgs, int evalArgN){
+	/*
 	printf("\n");
 	printf("replaceArgs argList: ");
 	printList(argList);
@@ -37,6 +38,7 @@ list replaceArgs(list argList, list functionList, element* evalArgs, int evalArg
 	printf("replaceArgs functionList: ");
 	printList(functionList);
 	printf("\n");
+	*/
 
 	for(int i=0;i<argList.size;i++){
 		if(argList.elements[i]->type != 0){

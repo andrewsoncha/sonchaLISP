@@ -255,9 +255,11 @@ element len(element *argList, int argN, int* signal){
 	}
 
 	element arg = argList[0];
-	printf("arg: ");
+	/*
+	 * printf("arg: ");
 	printElem(arg);
 	printf("\n");
+	*/
 	if(arg.type !=  1){ // If the passed argument is not a list
 		*signal = -2;
 		element resultElement = makeElementFromInt(-1);
@@ -296,9 +298,11 @@ element first(element *argList, int argN, int* signal){
 	}
 	else{
 		resultElement = *(listVal->elements[0]);
+		/*
 		printf("first Element: ");
 		printElem(resultElement);
 		printf("\n");
+		*/
 	}
 
 	*signal = 0;
@@ -330,9 +334,10 @@ element rest(element *argList, int argN, int* signal){
 	}
 	else{ // Delete the first element of the list
 	        list *restList = malloc(sizeof(list));
-		printf("listVal->size: %d\n", listVal->size);
+		// printf("listVal->size: %d\n", listVal->size);
 		restList->size = listVal->size-1;
 		restList->elements = malloc(sizeof(element*)*restList->size);
+		/*
 		for(int i=0;i<restList->size;i++){
 			printf("i: %d\n", i);
 			restList->elements[i] = listVal->elements[i+1];
@@ -340,6 +345,7 @@ element rest(element *argList, int argN, int* signal){
 		printf("rest element: ");
 		printList(*restList);
 		printf("\n");
+		*/
 		*signal = 0;
 
 		element resultElement;
@@ -362,13 +368,13 @@ element def(element *argList, int argN, int* signal){
 	element functionListArg;
 
 	nameArg = argList[0];
-	if(nameArg.type != 0){ // If the first element of the def operation (function arguments) is not an atom
+	if(nameArg.type != 0){ // If the first element of the def operation (function Name) is not an atom
 		*signal = -2;
 		printf("Error while defining function! First argument of the def operation (function name) not an atom!\n");
 		element resultElement = makeElementFromInt(-1);
 		return resultElement;
 	}
-	if(nameArg.atomVal->type != 1){ // If the first element of the def operation (function arguments) is not a keyword
+	if(nameArg.atomVal->type != 1){ // If the first element of the def operation (function Name) is not a keyword
 		*signal = -3;
 		printf("Error while defining function! First argument of the def operation (function name) not a keyword!\n");
 		element resultElement = makeElementFromInt(-1);
@@ -390,9 +396,11 @@ element def(element *argList, int argN, int* signal){
 		return resultElement;
 	}
 	list funcArgList = *(paramArg.listVal);
+	/*
 	printf("funcArgList: ");
 	printList(funcArgList);
 	printf("\n\n");
+	*/
 
 	functionListArg = argList[2];
 	if(functionListArg.type != 1){ // If the third element of the def operation (function eval list) is not an atom
@@ -402,9 +410,11 @@ element def(element *argList, int argN, int* signal){
 		return resultElement;
 	}
 	list functionList = *(functionListArg.listVal);
+	/*
 	printf("functionList: ");
 	printList(functionList);
 	printf("\n\n");
+	*/
 
 	list* temp;
 	// Save New Function
