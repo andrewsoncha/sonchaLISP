@@ -3,6 +3,7 @@
 #include <string.h>
 #include "sonchaLISP.h"
 #include "sonchaSTD.h"
+#define LINE_MX 500
 #define MX_EXP 5000
 
 atom* newNumAtom(char* intArr){
@@ -46,6 +47,9 @@ list* parse(char* expStr){
 	int len = strnlen(expStr, MX_EXP);
 	char* expStrCopy;
 	int quoteMode = 0;
+	if(len == 0){
+		return NULL;
+	}
 	expStrCopy = malloc(sizeof(char)*(len+1));
 	strcpy(expStrCopy, expStr);
 
@@ -58,7 +62,7 @@ list* parse(char* expStr){
 		len--;
 	}
 
-	printf("lastCharacter: %c %d \n", expStrCopy[len-1], expStrCopy[len-1]);
+	//printf("lastCharacter: %c %d \n", expStrCopy[len-1], expStrCopy[len-1]);
 	if(expStrCopy[len-1]==')'){
 		len--;
 	}
@@ -78,20 +82,19 @@ list* parse(char* expStr){
 		expStrCopy[len-2] = 0; //Done to remove the last ')' that ends the list 
 	}
 
-	printf("expStrCopy: %s\n",expStrCopy);
-
+	//printf("expStrCopy: %s\n",expStrCopy);
 
 	element* elementArr[MX_EXP]; //TODO: Change this into a more memory efficient way. Probably a linked list?
 	int elementN=0;
 
 	int parenthesisDepth = 0;
-	char *parenthesisStr = calloc(sizeof(char), len+1);
-	char *strtokContext;
-	char *token = strtok_r(expStrCopy, " ", &strtokContext);
+	char* parenthesisStr = calloc(len+1, sizeof(char));
+	char* strtokContext;
+	char* token = strtok_r(expStrCopy, " \n", &strtokContext);
 
 	while(token!=NULL){
 		int tokenLen = strlen(token);
-		printf("parenthesisDepth: %d    token: %s\n", parenthesisDepth, token);
+		// printf("parenthesisDepth: %d    token: %s\n", parenthesisDepth, token);
 		if(token[0]=='('|| (token[0]=='\''&&token[1]=='(')){
 			parenthesisDepth++;
 			strcat(parenthesisStr, token);
@@ -99,9 +102,13 @@ list* parse(char* expStr){
 			if(token[tokenLen-1]==')'){ //If it isn't a list with only a single element
 				parenthesisDepth--;
 				if(parenthesisDepth == 0){
-
+					/*
+					printf("Nested list, sending %s!\n", parenthesisStr);
+					printf("does this also cause an error?\n");
+					printf("parse(%s) %p\n", parenthesisStr, parenthesisStr);
+					*/
 					list *subList = parse(parenthesisStr);
-					printf("expStrCopy: %s\n", expStrCopy);
+					// printf("expStrCopy: %s\n", expStrCopy);
 					if(subList == NULL){ // Error while parsing subList
 						return NULL;
 					}
@@ -111,7 +118,7 @@ list* parse(char* expStr){
 			}
 		}
 		else if(token[tokenLen-1]==')'){
-			printf("token includes a closing parenthesis\n");
+			// printf("token includes a closing parenthesis\n");
 			for(int i=tokenLen-1;i>=0;i--){
 				if(token[i]==')'){
 					parenthesisDepth--;
@@ -119,9 +126,13 @@ list* parse(char* expStr){
 			}
 			strcat(parenthesisStr, token);
 			if(parenthesisDepth == 0){
+				/*
 				printf("Nested List, sending %s!\n",parenthesisStr);
+				printf("does this also cause an error?\n");
+				printf("parse(%s) %p\n", parenthesisStr, parenthesisStr);
+				*/
 				list *subList = parse(parenthesisStr);
-				printf("expStrCopy: %s\n", expStrCopy);
+				// printf("expStrCopy: %s\n", expStrCopy);
 				if(subList == NULL){ // Error while parsing subList
 					return NULL;
 				}
@@ -166,13 +177,13 @@ list* parse(char* expStr){
 				elementArr[elementN++] = newAtomElement(newAtom);
 			}
 		}
-		token = strtok_r(NULL, " ", &strtokContext);
+		token = strtok_r(NULL, " \n", &strtokContext);
 	}
 	if(token==NULL){
-		printf("token is NULL!\n");
+		// printf("token is NULL!\n");
 	}
 	else{
-		printf("token is \"%s\"\n", token);
+		// printf("token is \"%s\"\n", token);
 	}
 	if(parenthesisDepth>0){
 		printf("Parsing Error! Unclosed Parenthesis!\n");
@@ -193,9 +204,9 @@ list* parse(char* expStr){
 }
 
 element evalExpression(list exp, int *signal){
-	printf("Evaluating List :");
-	printList(exp);
-	printf("\n");
+	// printf("Evaluating List :");
+	// printList(exp);
+	// printf("\n");
 	if(exp.size == 0){
 		return makeElementFromInt(0);
 	}
@@ -209,11 +220,13 @@ element evalExpression(list exp, int *signal){
 	}
 
 	element operator = *(exp.elements[0]);
+	/*
 	printf("operator: ");
 	printElem(operator);
 	printf("\n");
 	printf("operator type: %d\n", operator.type);
 	printf("operator.atomVal->type: %d\n", operator.atomVal->type);
+	*/
 	if(operator.type!=0){ //If the first operator of the s-expression is not an atom
 		printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
 		*signal = -1;
@@ -246,7 +259,7 @@ element evalExpression(list exp, int *signal){
 		}
 		else{ //If element is a list
 			element subExpVal = evalExpression(*(elementVal.listVal), signal);
-			printf("\n");
+			// printf("\n");
 			if(*signal!=0){ //If there was an error while evaluating sub S-Expressions
 				return makeElementFromInt(-1);
 			}
@@ -261,9 +274,11 @@ element evalExpression(list exp, int *signal){
 		element (*funcPointer)(element*, int, int*);
 		funcPointer = evalFunction.functionPointer;
 		finalValue = funcPointer(argArr, argN, &evalSignal);
-		printf("eval value: ");
+		/*
+		 * printf("eval value: ");
 		printElem(finalValue);
 		printf("\n");
+		*/
 		if(evalSignal != 0){
 			printf("Eval Error! Error while running function %s!\n", evalFunction.name);
 			*signal = evalSignal;
@@ -278,11 +293,12 @@ element evalExpression(list exp, int *signal){
 		evalFunctionList = evalFunction.functionList;
 		argList = evalFunction.argList;
 
+		/*
 		printf("\n");
 		printf("replaceArgs argList: ");
 		printList(argList);
 		printf("\n");
-
+		*/
 
 		replacedFunctionList = replaceArgs(argList, evalFunctionList, argArr, argN);
 		finalValue = evalExpression(replacedFunctionList, &evalSignal);
@@ -308,9 +324,10 @@ element evalExpression(list exp, int *signal){
 }
 
 element evalCondExpression(list exp, int *signal){
-	printf("Evaluating List :");
+	/*printf("Evaluating List :");
 	printList(exp);
 	printf("\n");
+	*/
 	if(exp.size == 0){
 		return makeElementFromInt(0);
 	}
@@ -353,8 +370,10 @@ element evalCondExpression(list exp, int *signal){
 
 	if(condEvalResult.type != 0){
 		printf("evalCondExpression: Eval Error! Conditional Argument eval result is not an atom!\n");
+		/*
 		printf("eval result: ");
 		printElem(condEvalResult);
+		*/
 		*signal = -3;
 		return makeElementFromInt(-1);
 	}
@@ -363,8 +382,10 @@ element evalCondExpression(list exp, int *signal){
 	condEvalAtomVal = *(condEvalResult.atomVal);
 	if(condEvalAtomVal.type != 0){
 		printf("evalCondExpression: Eval Error! Conditional Argument result is not an integer!\n");
+		/*
 		printf("eval result: ");
 		printAtom(condEvalAtomVal);
+		*/
 		*signal = -4;
 		return makeElementFromInt(-1);
 	}
@@ -403,30 +424,64 @@ element evalCondExpression(list exp, int *signal){
 
 int main(int argc, char* argv[]){
 	list* userList;
-	char* userInput;
-	size_t userInputMX = MX_EXP;
+	char *inputBuffer = malloc(MX_EXP);
+	char *lineBuffer = malloc(LINE_MX);
+	//char *lineBuffer;
+	size_t lineMX = MX_EXP;
+	size_t lineLen;
 	size_t userInputLen;
 	int signal=0;
+	int openParenthesisN = 0;
 
 	init();
 	while(signal!=-1){
-		userInput = malloc(sizeof(char) * userInputMX);
-		printf(">> ");
-		userInputLen = getline(&userInput, &userInputMX, stdin);
+		//memset(lineBuffer, 0, LINE_MX);
+		if(openParenthesisN == 0){
+			printf(">> ");
+		}
+		else{
+			printf("...	");
+		}
+		lineLen = getline(&lineBuffer, &lineMX, stdin);
+		// printf("lineBuffer: %s\n", lineBuffer);
 
-		printf("parsing test expression: %s\n", userInput);
-		userList = parse(userInput);
-		printf("Running Print List!\n");
-		printList(*userList);
-		printf("\n");
+		for(int i=0;i<lineLen;i++){
+			if(lineBuffer[i] == '('){
+				openParenthesisN++;
+			}
+			if(lineBuffer[i] == ')'){
+				openParenthesisN--;
+			}
+		}
 
-		element evalResult = evalExpression(*userList, &signal);
-		printf("final value: ");
-		printElem(evalResult);
-		printf("\n");
-		printf("signal: %d\n", signal);
+		strlcat(inputBuffer, lineBuffer, MX_EXP);
+		userInputLen += lineLen;
 
-		freeList(userList);
+		if(openParenthesisN == 0){ // When end of multi-line expression
+			// printf("parsing test expression: %s\n", inputBuffer);
+			userList = parse(inputBuffer);
+			printf("Evaluating Expression!\n");
+			printList(*userList);
+			printf("\n");
+
+			element evalResult = evalExpression(*userList, &signal);
+			printf("final value: ");
+			printElem(evalResult);
+			printf("\n");
+			// printf("signal: %d\n", signal);
+
+			freeList(userList);
+
+			memset(inputBuffer, 0, MX_EXP);
+		}
+		else if(openParenthesisN < 0) { // If there are more closing parenthesis than opening ones
+			printf("There are more \')\' than there are \'(\'! \n");
+			printf("Resetting input buffer!\n");
+			// memset(lineBuffer, 0, LINE_MX);
+			memset(inputBuffer, 0, MX_EXP);
+		}
+
+
 	}
 	return 0;
 }
