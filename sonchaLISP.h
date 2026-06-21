@@ -56,9 +56,11 @@ void freeElement(element *elementToBeFreed){
 }
 
 void freeList(list *listToBeFreed){
+	/*
 	printf("freeList: ");
 	printList(*listToBeFreed);
 	printf("\n");
+	*/
 	for(int i=0;i<listToBeFreed->size;i++){
 		freeElement(listToBeFreed->elements[i]);
 	}
@@ -81,7 +83,7 @@ list *copyList(list prevList){
 	result->size = prevList.size;
 	result->quoteMode = prevList.quoteMode;
 	result->elements = malloc(sizeof(element)*result->size);
-	printf("copyList prevList.size: %d\n", prevList.size);
+	//printf("copyList prevList.size: %d\n", prevList.size);
 	for(int i=0;i<result->size;i++){
 		result->elements[i] = copyElement(*(prevList.elements[i]));
 	}

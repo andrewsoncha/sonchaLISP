@@ -429,7 +429,7 @@ void init(){
 	defineStdFunction(mult, "mult", "Multiply the arguments");
 	defineStdFunction(divide, "div", "Divide the 1st argument by each consecutive arguments");
 	defineStdFunction(eq, "eq", "Return 1 if argument 1 and argument 2 is the same value. Return 0 if not.");
-	defineStdFunction(cond, "cond", "Return the 2nd argument if argument 1 and argument 2 is the same value. Return 0 if not.");
+	defineStdFunction(cond, "cond", "Return the 2nd argument if argument 1 is 1. Return 3rd argument if not.");
 	defineStdFunction(less, "less", "Return 1 if argument 1 is less than argument 2");
 	defineStdFunction(greater, "greater", "Return 1 if argument 1 is greater than argument 2");
 	defineStdFunction(len, "len", "Return the length of argument 1 (list)");
