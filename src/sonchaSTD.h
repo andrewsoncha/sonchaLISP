@@ -279,6 +279,7 @@ element len(element *argList, int argN, int* signal){
 
 element first(element *argList, int argN, int* signal){
 	element resultElement;
+	printf("first function called!\n");
 	if(argN != 1){
 		*signal = -1;
 		element resultElement = makeElementFromInt(-1);
@@ -314,6 +315,7 @@ element first(element *argList, int argN, int* signal){
 }
 
 element rest(element *argList, int argN, int* signal){
+	printf("rest function called!\n");
 	element resultElement;
 	if(argN != 1){
 		*signal = -1;
@@ -337,18 +339,16 @@ element rest(element *argList, int argN, int* signal){
 	}
 	else{ // Delete the first element of the list
 	        list *restList = malloc(sizeof(list));
-		// printf("listVal->size: %d\n", listVal->size);
+		printf("listVal->size: %d\n", listVal->size);
 		restList->size = listVal->size-1;
 		restList->elements = malloc(sizeof(element*)*restList->size);
-		/*
 		for(int i=0;i<restList->size;i++){
-			printf("i: %d\n", i);
+			//printf("i: %d      prevElements[%d]: %p\n", i, i+1, listVal->elements[i+1]);
 			restList->elements[i] = listVal->elements[i+1];
 		}
 		printf("rest element: ");
 		printList(*restList);
 		printf("\n");
-		*/
 		*signal = 0;
 
 		element resultElement;
@@ -356,6 +356,155 @@ element rest(element *argList, int argN, int* signal){
 		resultElement.listVal = restList;
 		return resultElement;
 	}
+}
+
+element pushBack(element *argList, int argN, int* signal){
+	printf("pushBack function called!\n");
+	if(argN != 2){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element listArg = argList[0];
+	if(listArg.type !=  1){ // If the first argument is not a list
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	
+	element elementArg = argList[1];
+	if(elementArg.type !=  0){ // If the first argument is not a list
+		*signal = -3;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	list *listVal = listArg.listVal;
+	
+	list *resultList = malloc(sizeof(list));
+	printf("listVal->size: %d\n", listVal->size);
+	resultList->size = listVal->size+1;
+	resultList->elements = malloc(sizeof(element*)*resultList->size);
+
+	for(int i=0;i<listVal->size;i++){
+		resultList->elements[i] = listVal->elements[i];
+	}
+	resultList->elements[resultList->size-1] = copyElement(elementArg);
+
+	printf("resultList: ");
+	printList(*resultList);
+	printf("\n");
+	*signal = 0;
+
+	element resultElement;
+	resultElement.type = 1;
+	resultElement.listVal = resultList;
+	return resultElement;
+}
+
+element pushFront(element *argList, int argN, int* signal){
+	printf("pushFront function called!\n");
+	if(argN != 2){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element listArg = argList[0];
+	if(listArg.type !=  1){ // If the first argument is not a list
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	
+	element elementArg = argList[1];
+	if(elementArg.type !=  0){ // If the first argument is not an atom
+		*signal = -3;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+	list *listVal = listArg.listVal;
+	
+	list *resultList = malloc(sizeof(list));
+	printf("listVal->size: %d\n", listVal->size);
+	resultList->size = listVal->size+1;
+	resultList->elements = malloc(sizeof(element*)*resultList->size);
+
+	for(int i=0;i<listVal->size;i++){
+		resultList->elements[i+1] = listVal->elements[i];
+	}
+	resultList->elements[0] = copyElement(elementArg);
+
+	printf("resultList: ");
+	printList(*resultList);
+	printf("\n");
+	*signal = 0;
+
+	element resultElement;
+	resultElement.type = 1;
+	resultElement.listVal = resultList;
+	return resultElement;
+}
+
+element printAscii(element *argList, int argN, int* signal){
+	if(argN != 1){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element arg = argList[0];
+	if(arg.type !=  0){ // If the first argument is not an atom
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	atom argAtomVal = *(arg.atomVal);
+	int argIntVal = argAtomVal.value;
+
+	if(argIntVal<0 || argIntVal > 255){ // value not within ascii range
+		printf("printAscii: Input value is not within ascii range!\n");
+		*signal = -3;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	printf("%c", argIntVal);
+
+	*signal = 0;
+
+	element resultElement;
+	resultElement.type = 0;
+	resultElement = makeElementFromInt(0);
+	return resultElement;
+}
+
+element printInt(element *argList, int argN, int* signal){
+	if(argN != 1){
+		*signal = -1;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	element arg = argList[0];
+	if(arg.type !=  0){ // If the first argument is not an atom
+		*signal = -2;
+		element resultElement = makeElementFromInt(-1);
+		return resultElement;
+	}
+
+	atom argAtomVal = *(arg.atomVal);
+	int argIntVal = argAtomVal.value;
+
+	printf("%d", argIntVal);
+
+	*signal = 0;
+
+	element resultElement;
+	resultElement.type = 0;
+	resultElement = makeElementFromInt(0);
+	return resultElement;
 }
 
 element def(element *argList, int argN, int* signal){
@@ -448,5 +597,9 @@ void init(){
 	defineStdFunction(len, "len", "Return the length of argument 1 (list)");
 	defineStdFunction(first, "first", "Return the first element of a list");
 	defineStdFunction(rest, "rest", "Excluding the first element of a list, return the rest of the list");
+	defineStdFunction(printAscii, "printAscii", "Print character of input");
+	defineStdFunction(printInt, "printInt", "Print int number of input");
+	defineStdFunction(pushFront, "pushFront", "Append second argument (atom) to the first argument (list) to the front");
+	defineStdFunction(pushBack, "pushBack", "Append second argument (atom) to the first argument (list) to the back");
 	defineStdFunction(def, "def", "Define a new user-defined function");
 }

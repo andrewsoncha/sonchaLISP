@@ -132,7 +132,7 @@ void printAtom(atom x){
 }
 
 void printElem(element x){
-//	printf("element type:%d\n",x.type);
+	// printf("element type:%d\n",x.type);
 	if(x.type==0){ // If the element is an atom
 		printAtom(*(x.atomVal));
 	}
@@ -145,8 +145,10 @@ void printList(list listX){
 	if(listX.quoteMode==1){
 		printf("\'");
 	}
+	printf("list size: %d\n", listX.size);
 	printf("(");
 	for(int i=0;i<listX.size;i++){
+		// printf("listX.elements[%d]: %p\n", i, listX.elements[i]);
 		printElem(*(listX.elements[i]));
 		if(i<(listX.size-1)){
 			printf(" ");

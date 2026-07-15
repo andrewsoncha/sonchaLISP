@@ -7,6 +7,11 @@
 #define MX_EXP 500000
 #define MX_ELEMS 5000
 
+typedef enum _ioModeEnum{
+	IO_CLI_MODE,
+	IO_FILE_MODE
+} ioModeEnum;
+
 atom* newNumAtom(char* intArr){
 	int val = atoi(intArr);
 	atom* newNumAtom = malloc(sizeof(atom));
@@ -451,18 +456,39 @@ int main(int argc, char* argv[]){
 	size_t userInputLen=0;
 	int signal=0;
 	int openParenthesisN = 0;
+	FILE* inputFP;
+	ioModeEnum ioMode;
+
+	if(argc == 1){ // When given no arguments (== cli mode)
+		inputFP = stdin;
+		ioMode = IO_CLI_MODE;
+	}
+	else{ // When code file is given
+		printf("argc: %d  argv[0]: %s   argv[1]: %s\n", argc, argv[0], argv[1]);
+	      	inputFP = fopen(argv[1], "r");
+		if(inputFP == NULL){
+			printf("Error opening file %s! Exiting!\n", argv[1]);
+			return -1;
+		}
+		ioMode = IO_FILE_MODE;
+	}
 
 	init();
 	while(signal!=-1){
 		//memset(lineBuffer, 0, LINE_MX);
-		if(openParenthesisN == 0){
-			printf(">> ");
+		if(ioMode == IO_CLI_MODE){
+			if(openParenthesisN == 0){
+				printf(">> ");
+			}
+			else{
+				printf("...	");
+			}
 		}
-		else{
-			printf("...	");
+		lineLen = getline(&lineBuffer, &lineMX, inputFP);
+		if(lineLen==-1){
+			break;
 		}
-		lineLen = getline(&lineBuffer, &lineMX, stdin);
-		// printf("lineBuffer: %s\n", lineBuffer);
+		// printf("lineLen: %ld lineBuffer: %s\n", lineLen, lineBuffer);
 
 		for(int i=0;i<lineLen;i++){
 			if(lineBuffer[i] == '('){
@@ -479,14 +505,18 @@ int main(int argc, char* argv[]){
 		if(openParenthesisN == 0){ // When end of multi-line expression
 			// printf("parsing test expression: %s\n", inputBuffer);
 			userList = parse(inputBuffer, userInputLen);
-			printf("Evaluating Expression!\n");
-			printList(*userList);
-			printf("\n");
+			if(ioMode == IO_CLI_MODE){
+				printf("Evaluating Expression!\n");
+				printList(*userList);
+				printf("\n");
+			}
 
 			element evalResult = evalExpression(*userList, &signal);
-			printf("final value: ");
-			printElem(evalResult);
-			printf("\n");
+			if(ioMode == IO_CLI_MODE){
+				printf("final value: ");
+				printElem(evalResult);
+				printf("\n");
+			}
 			// printf("signal: %d\n", signal);
 
 			freeList(userList);
@@ -500,8 +530,6 @@ int main(int argc, char* argv[]){
 			// memset(lineBuffer, 0, LINE_MX);
 			memset(inputBuffer, 0, MX_EXP);
 		}
-
-
 	}
 	return 0;
 }
