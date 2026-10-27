@@ -1,5 +1,6 @@
 #pragma once
 #include<string.h>
+#include<stdlib.h>
 #include"sonchaLISP.h"
 #include"sonchaFunctions.h"
 
@@ -460,6 +461,7 @@ element printAscii(element *argList, int argN, int* signal){
 		return resultElement;
 	}
 
+
 	atom argAtomVal = *(arg.atomVal);
 	int argIntVal = argAtomVal.value;
 
@@ -507,6 +509,29 @@ element printInt(element *argList, int argN, int* signal){
 	return resultElement;
 }
 
+element scanInt(element *argList, int argN, int* signal){
+  int scannedInt;
+  printf("Input number: ");
+  scanf("%d",&scannedInt);
+  fflush(stdout);
+  fflush(stdin);
+
+  element resultElement;
+  resultElement.type = 0;
+  resultElement = makeElementFromInt(scannedInt);
+  return resultElement;
+}
+
+element exitProgram(element *argList, int argN, int* signal){
+  // TODO: Free Malloc'ed memory. Make a shutdown function that takes care of that.
+  exit(0);
+  // Unreachable Code (Hopefully)
+  element resultElement;
+  resultElement.type = 0;
+  resultElement = makeElementFromInt(-1);
+  return resultElement;
+}
+
 element def(element *argList, int argN, int* signal){
 	if(argN != 3){
 		*signal = -1;
@@ -541,6 +566,9 @@ element def(element *argList, int argN, int* signal){
 	functionName[functionNameLen] = 0;
 
 	paramArg = argList[1];
+  printf("paramArg: ");
+  printElem(paramArg);
+  printf("\n");
 	if(paramArg.type != 1){ // If the second element of the def operation (function arguments) is not an atom
 		*signal = -4;
 		printf("Error while defining function! Second argument of the def operation (function arguments) not a list!\n");
@@ -548,11 +576,10 @@ element def(element *argList, int argN, int* signal){
 		return resultElement;
 	}
 	list funcArgList = *(paramArg.listVal);
-	/*
+
 	printf("funcArgList: ");
 	printList(funcArgList);
 	printf("\n\n");
-	*/
 
 	functionListArg = argList[2];
 	if(functionListArg.type != 1){ // If the third element of the def operation (function eval list) is not an atom
@@ -561,24 +588,34 @@ element def(element *argList, int argN, int* signal){
 		element resultElement = makeElementFromInt(-1);
 		return resultElement;
 	}
-	list functionList = *(functionListArg.listVal);
-	/*
-	printf("functionList: ");
-	printList(functionList);
-	printf("\n\n");
-	*/
+  function newFunction;
+  if(functionListArg.type == 1){
+    list functionList = *(functionListArg.listVal);
+    /*
+    printf("functionList: ");
+    printList(functionList);
+    printf("\n\n");
+    */
 
-	list* temp;
-	// Save New Function
-	function newFunction;
-	newFunction.type = 1;
-	newFunction.name = functionName;
-	temp = copyList(funcArgList);
-	newFunction.argList = *temp;
-	free(temp); // Only free(temp) and not freeList(temp) cause we have to access the elements in temp that are copied to newFunction.argList or newFunction.functionList
-	temp = copyList(functionList);
-	newFunction.functionList = *temp;
-	free(temp);
+    list* temp;
+    // Save New Function
+    newFunction.type = 1;
+    newFunction.name = functionName;
+    printf("function name: %s\n\n", newFunction.name);
+    temp = copyList(funcArgList);
+    newFunction.argList = *temp;
+    free(temp); // Only free(temp) and not freeList(temp) cause we have to access the elements in temp that are copied to newFunction.argList or newFunction.functionList
+    temp = copyList(functionList);
+    newFunction.functionList = *temp;
+    free(temp);
+  }
+  else{
+    newFunction.type = 1;
+    newFunction.name = functionName;
+    newFunction.functionList = NULL;
+    newFunction.functionList = copyList(functionList);
+  }
+  printf("allFunctions[%d]: %s\n", allFunctionN, newFunction.name);
 	allFunctions[allFunctionN++] = newFunction;
 
 	element resultElement = makeElementFromInt(0);
@@ -599,7 +636,9 @@ void init(){
 	defineStdFunction(rest, "rest", "Excluding the first element of a list, return the rest of the list");
 	defineStdFunction(printAscii, "printAscii", "Print character of input");
 	defineStdFunction(printInt, "printInt", "Print int number of input");
+  defineStdFunction(scanInt, "scanInt", "Scan int number from stdin");
 	defineStdFunction(pushFront, "pushFront", "Append second argument (atom) to the first argument (list) to the front");
 	defineStdFunction(pushBack, "pushBack", "Append second argument (atom) to the first argument (list) to the back");
+  defineStdFunction(exitProgram, "exit", "Exit the Program");
 	defineStdFunction(def, "def", "Define a new user-defined function");
 }

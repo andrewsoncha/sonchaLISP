@@ -229,8 +229,11 @@ element evalExpression(list exp, int *signal){
 	// printf("Evaluating List :");
 	// printList(exp);
 	// printf("\n");
-	if(exp.size == 0){
-		return makeElementFromInt(0);
+	if(exp.size == 0){  // Empty List
+    element result;
+    result.type = 1;
+    result.listVal = makeEmptyList();
+		return result;
 	}
 
 	if(exp.quoteMode == 1){ // If quoteMode==1, don't evaluate the list
@@ -242,13 +245,11 @@ element evalExpression(list exp, int *signal){
 	}
 
 	element operator = *(exp.elements[0]);
-	/*
 	printf("operator: ");
 	printElem(operator);
 	printf("\n");
 	printf("operator type: %d\n", operator.type);
 	printf("operator.atomVal->type: %d\n", operator.atomVal->type);
-	*/
 	if(operator.type!=0){ //If the first operator of the s-expression is not an atom
 		printf("Eval Error! The first element of the S-Expression is not a function/operator!\n");
 		*signal = -1;
@@ -270,7 +271,7 @@ element evalExpression(list exp, int *signal){
 		*signal = -2;
 		return makeElementFromInt(-1);
 	}
-
+  printf("functon found! evalFunction name: %s\n", evalFunction.name);
 
 	int argN = exp.size-1;
 	element* argArr = malloc(sizeof(element)*(argN));
@@ -488,6 +489,9 @@ int main(int argc, char* argv[]){
 		if(lineLen==-1){
 			break;
 		}
+    if(lineLen==0 || lineLen == 1){ // Emtpy Line or just '\n'
+      continue;
+    }
 		// printf("lineLen: %ld lineBuffer: %s\n", lineLen, lineBuffer);
 
 		for(int i=0;i<lineLen;i++){

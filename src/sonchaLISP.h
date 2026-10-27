@@ -32,6 +32,7 @@ element evalCondExpression(list exp, int *signal);
 list *copyList(list prevList);
 element *copyElement(element prevElement);
 atom *copyAtom(atom prevAtom);
+list *makeEmptyList();
 
 void freeAtom(atom *atomToBeFreed){
 	// Does not check atom type because if there is data that is not used that is still allocated that should still be freed to prevent data leaks
@@ -88,6 +89,14 @@ list *copyList(list prevList){
 		result->elements[i] = copyElement(*(prevList.elements[i]));
 	}
 	return result;
+}
+
+list *makeEmptyList(){
+  list* result = malloc(sizeof(list));
+  result->size = 0;
+  result->quoteMode = 1;
+  result->elements = NULL;
+  return result;
 }
 
 element *copyElement(element prevElement){
